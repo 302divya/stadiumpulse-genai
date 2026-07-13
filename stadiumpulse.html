@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>StadiumPulse — GenAI Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0A0E1A;
+    --panel:#111A2B;
+    --panel-2:#0E1522;
+    --line: rgba(255,255,255,0.09);
+    --turf:#1B8A5A;
+    --turf-light:#2FBE7C;
+    --amber:#F2A93B;
+    --sky:#4FC3F7;
+    --red:#E5533D;
+    --paper:#EDEFF3;
+    --muted:#8892A6;
+    --disp: 'Archivo Black', sans-serif;
+    --body: 'Inter', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--ink);color:var(--paper);font-family:var(--body);}
+  body{min-height:100vh;}
+  ::selection{background:var(--turf-light);color:#04120B;}
+
+  /* ---------- Top ticker ---------- */
+  .ticker-wrap{
+    background:var(--panel-2);
+    border-bottom:1px solid var(--line);
+    overflow:hidden;
+    white-space:nowrap;
+    padding:6px 0;
+  }
+  .ticker{
+    display:inline-block;
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.04em;
+    color:var(--sky);
+    animation:scroll 28s linear infinite;
+    padding-left:100%;
+  }
+  .ticker b{color:var(--amber);}
+  .ticker .ok{color:var(--turf-light);}
+  @keyframes scroll{ from{transform:translateX(0);} to{transform:translateX(-100%);} }
+
+  /* ---------- Header ---------- */
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:22px 32px 18px;
+    max-width:1240px;margin:0 auto;
+  }
+  .brand{display:flex;align-items:center;gap:14px;}
+  .brand-mark{
+    width:42px;height:42px;border-radius:10px;
+    background:conic-gradient(from 220deg, var(--turf), var(--sky), var(--amber), var(--turf));
+    position:relative;flex:none;
+  }
+  .brand-mark::after{
+    content:"";position:absolute;inset:5px;border-radius:7px;background:var(--ink);
+  }
+  .brand h1{
+    font-family:var(--disp);
+    font-size:22px;letter-spacing:.01em;margin:0;
+    text-transform:uppercase;
+  }
+  .brand p{margin:2px 0 0;font-size:12px;color:var(--muted);letter-spacing:.03em;}
+
+  .tabs{display:flex;gap:2px;background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:4px;}
+  .tab-btn{
+    font-family:var(--mono);font-size:12px;letter-spacing:.05em;text-transform:uppercase;
+    background:transparent;border:none;color:var(--muted);padding:9px 18px;border-radius:999px;
+    cursor:pointer;transition:.2s;
+  }
+  .tab-btn.active{background:var(--turf);color:#04140C;font-weight:700;}
+  .tab-btn:not(.active):hover{color:var(--paper);}
+
+  main{max-width:1240px;margin:0 auto;padding:0 32px 60px;}
+  .view{display:none;}
+  .view.active{display:block;animation:fade .35s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);margin:0 0 6px;}
+  h2.section-title{font-family:var(--disp);font-size:28px;margin:0 0 4px;text-transform:uppercase;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 28px;max-width:640px;line-height:1.5;}
+
+  /* =============== FAN ASSISTANT =============== */
+  .fan-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:28px;align-items:start;}
+  @media (max-width: 900px){.fan-grid{grid-template-columns:1fr;}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;}
+  .chat-card{display:flex;flex-direction:column;height:560px;overflow:hidden;}
+  .chat-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);}
+  .chat-head-l{display:flex;align-items:center;gap:10px;}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--turf-light);box-shadow:0 0 0 4px rgba(47,190,124,.15);}
+  .chat-head strong{font-size:13px;letter-spacing:.02em;}
+  select#lang{
+    background:var(--panel-2);color:var(--paper);border:1px solid var(--line);border-radius:8px;
+    font-family:var(--mono);font-size:11px;padding:6px 10px;
+  }
+  .chat-log{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px;}
+  .msg{max-width:82%;padding:10px 14px;border-radius:12px;font-size:13.5px;line-height:1.5;}
+  .msg.bot{background:var(--panel-2);align-self:flex-start;border:1px solid var(--line);}
+  .msg.user{background:var(--turf);color:#04140C;align-self:flex-end;font-weight:500;}
+  .msg.loading{color:var(--muted);font-family:var(--mono);font-size:12px;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 18px 14px;}
+  .chip{
+    font-family:var(--mono);font-size:11px;background:var(--panel-2);border:1px solid var(--line);
+    color:var(--sky);padding:7px 12px;border-radius:999px;cursor:pointer;transition:.15s;
+  }
+  .chip:hover{border-color:var(--sky);}
+  .chat-input{display:flex;gap:8px;padding:14px;border-top:1px solid var(--line);}
+  .chat-input input{
+    flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+    color:var(--paper);padding:11px 14px;font-family:var(--body);font-size:13.5px;
+  }
+  .chat-input input:focus{outline:none;border-color:var(--sky);}
+  .send-btn{
+    background:var(--amber);color:#231400;border:none;border-radius:10px;padding:0 18px;
+    font-weight:700;font-size:13px;cursor:pointer;
+  }
+  .send-btn:disabled{opacity:.5;cursor:default;}
+
+  .side-stack{display:flex;flex-direction:column;gap:18px;}
+  .mini-card{padding:18px 20px;}
+  .mini-card h3{margin:0 0 4px;font-size:14px;font-family:var(--disp);text-transform:uppercase;letter-spacing:.01em;}
+  .mini-card p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.5;}
+  .accessible-row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+  .badge{font-family:var(--mono);font-size:10.5px;background:var(--panel-2);border:1px solid var(--line);padding:5px 10px;border-radius:8px;color:var(--turf-light);}
+
+  /* =============== OPS COMMAND CENTER =============== */
+  .ops-grid{display:grid;grid-template-columns:420px 1fr;gap:28px;align-items:start;}
+  @media (max-width:980px){.ops-grid{grid-template-columns:1fr;}}
+
+  /* Stadium pulse map */
+  .pulse-wrap{padding:26px;display:flex;flex-direction:column;align-items:center;}
+  .pulse-map{position:relative;width:340px;height:340px;}
+  .pitch{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:130px;height:80px;background:var(--turf);border-radius:10px;
+    border:2px solid rgba(255,255,255,.25);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .pitch::after{content:"";position:absolute;width:36px;height:36px;border:2px solid rgba(255,255,255,.3);border-radius:50%;}
+  .pitch span{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.55);position:absolute;bottom:6px;letter-spacing:.08em;}
+  .block{
+    position:absolute;top:50%;left:50%;width:26px;height:46px;border-radius:6px;
+    transform-origin:center 150px;
+    cursor:pointer;transition:filter .2s, transform .2s;
+  }
+  .block:hover{filter:brightness(1.25);transform-origin:center 150px;}
+  .block.low{background:#1E5C46;}
+  .block.med{background:var(--amber);}
+  .block.high{background:#E08A2B;}
+  .block.crit{background:var(--red);animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+  .legend{display:flex;gap:16px;margin-top:18px;font-family:var(--mono);font-size:10.5px;color:var(--muted);flex-wrap:wrap;justify-content:center;}
+  .legend span{display:flex;align-items:center;gap:6px;}
+  .legend i{width:9px;height:9px;border-radius:2px;display:inline-block;}
+
+  .gate-list{margin-top:20px;width:100%;display:flex;flex-direction:column;gap:8px;}
+  .gate-row{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:9px 12px;background:var(--panel-2);border-radius:9px;border:1px solid var(--line);}
+  .gate-row b{font-family:var(--mono);color:var(--paper);}
+  .wait{font-family:var(--mono);font-weight:700;}
+  .wait.low{color:var(--turf-light);} .wait.med{color:var(--amber);} .wait.high{color:var(--red);}
+
+  .ops-right{display:flex;flex-direction:column;gap:20px;}
+  .metric-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  @media (max-width:700px){.metric-row{grid-template-columns:repeat(2,1fr);}}
+  .metric{padding:16px;text-align:left;}
+  .metric .num{font-family:var(--disp);font-size:26px;color:var(--sky);}
+  .metric .lbl{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
+
+  .briefing-card{padding:20px;}
+  .briefing-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;}
+  .briefing-head h3{margin:0;font-family:var(--disp);font-size:16px;text-transform:uppercase;}
+  .gen-btn{
+    background:var(--sky);color:#04202b;border:none;border-radius:9px;padding:9px 16px;
+    font-weight:700;font-size:12px;cursor:pointer;font-family:var(--mono);letter-spacing:.03em;
+  }
+  .gen-btn:disabled{opacity:.5;}
+  .briefing-body{font-size:13.5px;line-height:1.65;color:var(--paper);white-space:pre-wrap;}
+  .briefing-body.placeholder{color:var(--muted);font-family:var(--mono);font-size:12px;}
+
+  .alert-feed{display:flex;flex-direction:column;gap:10px;}
+  .alert{display:flex;gap:12px;padding:12px 14px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);align-items:flex-start;}
+  .alert .tag{font-family:var(--mono);font-size:9.5px;padding:3px 7px;border-radius:6px;flex:none;text-transform:uppercase;margin-top:2px;}
+  .tag.crit{background:rgba(229,83,61,.18);color:var(--red);}
+  .tag.warn{background:rgba(242,169,59,.18);color:var(--amber);}
+  .tag.info{background:rgba(79,195,247,.18);color:var(--sky);}
+  .alert p{margin:0;font-size:12.5px;line-height:1.45;}
+  .alert .time{color:var(--muted);font-family:var(--mono);font-size:10px;margin-top:3px;display:block;}
+
+  footer{max-width:1240px;margin:0 auto;padding:20px 32px 40px;color:var(--muted);font-size:11px;font-family:var(--mono);border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+
+<div class="ticker-wrap"><div class="ticker" id="tickerText"></div></div>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <div>
+      <h1>StadiumPulse</h1>
+      <p>GenAI Command Center · FIFA World Cup 2026</p>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-view="fan">Fan Assistant</button>
+    <button class="tab-btn" data-view="ops">Ops Command Center</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ FAN VIEW ============ -->
+  <section class="view active" id="view-fan">
+    <p class="eyebrow">Fan-Facing · Multilingual · Accessibility-First</p>
+    <h2 class="section-title">Ask anything. In any language.</h2>
+    <p class="sub">A GenAI concierge for every seat in the house — wayfinding, accessible routing, transport, and live stadium conditions, answered instantly in the fan's own language.</p>
+
+    <div class="fan-grid">
+      <div class="card chat-card">
+        <div class="chat-head">
+          <div class="chat-head-l"><span class="dot"></span><strong>Estadio Copilot · Gate Concourse AI</strong></div>
+          <select id="lang">
+            <option value="English">English</option>
+            <option value="Spanish">Español</option>
+            <option value="Portuguese">Português</option>
+            <option value="French">Français</option>
+            <option value="Arabic">العربية</option>
+          </select>
+        </div>
+        <div class="chat-log" id="chatLog">
+          <div class="msg bot">Welcome to Estadio Grande! I know this stadium inside out — gates, seating, accessible routes, restrooms, shuttles, and match-day conditions. What do you need?</div>
+        </div>
+        <div class="chips" id="chips">
+          <div class="chip" data-q="Find the fastest way from Gate C to Section 214">Fastest route to my seat</div>
+          <div class="chip" data-q="I use a wheelchair, what is the best accessible entrance and route?">Accessible entrance</div>
+          <div class="chip" data-q="Where is the nearest quiet sensory-friendly room?">Sensory-friendly room</div>
+          <div class="chip" data-q="What is the fastest sustainable way back to downtown after the match?">Green way home</div>
+        </div>
+        <div class="chat-input">
+          <input id="chatInput" type="text" placeholder="Type your question…" />
+          <button class="send-btn" id="sendBtn">Ask</button>
+        </div>
+      </div>
+
+      <div class="side-stack">
+        <div class="card mini-card">
+          <h3>Why it wins</h3>
+          <p>One GenAI layer replaces a dozen static signs, apps, and hotlines — reasoning over live stadium data to answer in the fan's language, tone, and accessibility need.</p>
+        </div>
+        <div class="card mini-card">
+          <h3>Accessibility built in, not bolted on</h3>
+          <p>Every answer is checked against step-free paths, sensory rooms, and companion-seating data before it's given.</p>
+          <div class="accessible-row">
+            <span class="badge">Step-free routing</span>
+            <span class="badge">Sign-language kiosks</span>
+            <span class="badge">Sensory rooms</span>
+          </div>
+        </div>
+        <div class="card mini-card">
+          <h3>Sustainability nudges</h3>
+          <p>The assistant quietly steers fans toward shuttles, transit, and walking routes over rideshare, and reports carbon saved back to Ops.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OPS VIEW ============ -->
+  <section class="view" id="view-ops">
+    <p class="eyebrow">Organizer & Volunteer Facing · Real-Time Decision Support</p>
+    <h2 class="section-title">See the stadium think.</h2>
+    <p class="sub">Live crowd density across every seating block, gate wait times, and an AI operations briefing generated on demand from current conditions — so staff act minutes before a bottleneck forms, not after.</p>
+
+    <div class="ops-grid">
+      <div class="card pulse-wrap">
+        <div class="pulse-map" id="pulseMap">
+          <div class="pitch"><span>PITCH</span></div>
+        </div>
+        <div class="legend">
+          <span><i style="background:#1E5C46"></i>Low</span>
+          <span><i style="background:var(--amber)"></i>Moderate</span>
+          <span><i style="background:#E08A2B"></i>High</span>
+          <span><i style="background:var(--red)"></i>Critical</span>
+        </div>
+        <div class="gate-list" id="gateList"></div>
+      </div>
+
+      <div class="ops-right">
+        <div class="metric-row">
+          <div class="card metric"><div class="num">67,412</div><div class="lbl">Fans in venue</div></div>
+          <div class="card metric"><div class="num">4</div><div class="lbl">Blocks at critical density</div></div>
+          <div class="card metric"><div class="num">318</div><div class="lbl">Shuttle riders / 10 min</div></div>
+          <div class="card metric"><div class="num">6.2t</div><div class="lbl">CO₂ saved today</div></div>
+        </div>
+
+        <div class="card briefing-card">
+          <div class="briefing-head">
+            <h3>AI Operations Briefing</h3>
+            <button class="gen-btn" id="genBtn">Generate live briefing</button>
+          </div>
+          <div class="briefing-body placeholder" id="briefingBody">Press "Generate live briefing" — the model will read current gate, density, and transport data and write a plain-language action briefing for the command center, the way a chief of operations would.</div>
+        </div>
+
+        <div class="card" style="padding:18px;">
+          <h3 style="margin:0 0 12px;font-family:var(--disp);font-size:16px;text-transform:uppercase;">Live Alert Feed</h3>
+          <div class="alert-feed" id="alertFeed"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>StadiumPulse — Prototype built for PromptWars Challenge 4: Smart Stadiums &amp; Tournament Operations. Live AI responses generated in real time; stadium data simulated for demo purposes.</footer>
+
+<script>
+/* ---------------- Tabs ---------------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+  });
+});
+
+/* ---------------- Ticker ---------------- */
+const tickerFacts = [
+  'GATE B <b>14 MIN</b> WAIT',
+  'SECTION 112–118 <span class="ok">CROWD NORMAL</span>',
+  'SHUTTLE LINE 3 DEPARTS <b>4 MIN</b>',
+  'WEATHER <b>29°C</b> · UV HIGH · HYDRATION STATIONS OPEN',
+  'ACCESSIBLE ENTRANCE C1 <span class="ok">CLEAR</span>',
+  'CONCOURSE WEST <b>APPROACHING CAPACITY</b>',
+  'METRO LINE 2 <span class="ok">ON TIME</span>',
+  'AI OPS COPILOT: 214 QUERIES RESOLVED LAST 10 MIN'
+];
+document.getElementById('tickerText').innerHTML = tickerFacts.join('&nbsp;&nbsp;&nbsp;•&nbsp;&nbsp;&nbsp;') + '&nbsp;&nbsp;&nbsp;•&nbsp;&nbsp;&nbsp;' + tickerFacts.join('&nbsp;&nbsp;&nbsp;•&nbsp;&nbsp;&nbsp;');
+
+/* ---------------- Stadium pulse map ---------------- */
+const N = 22;
+const densities = ['low','low','med','low','high','med','low','crit','med','low','low','high','med','low','crit','low','med','low','high','med','low','low'];
+const pulseMap = document.getElementById('pulseMap');
+for(let i=0;i<N;i++){
+  const angle = (360/N)*i;
+  const el = document.createElement('div');
+  el.className = 'block ' + densities[i];
+  el.style.transform = `rotate(${angle}deg) translateY(-150px)`;
+  el.title = 'Section ' + (100+i) + ' — ' + densities[i].toUpperCase();
+  pulseMap.appendChild(el);
+}
+
+/* ---------------- Gate list ---------------- */
+const gates = [
+  {name:'Gate A — North', wait:6, level:'low'},
+  {name:'Gate B — East', wait:14, level:'med'},
+  {name:'Gate C — Accessible', wait:3, level:'low'},
+  {name:'Gate D — South', wait:22, level:'high'},
+  {name:'Gate E — West', wait:9, level:'low'},
+];
+document.getElementById('gateList').innerHTML = gates.map(g=>
+  `<div class="gate-row"><span><b>${g.name}</b></span><span class="wait ${g.level}">${g.wait} min</span></div>`
+).join('');
+
+/* ---------------- Alert feed (seeded) ---------------- */
+const seedAlerts = [
+  {tag:'crit', text:'Section 214–218 crossing critical density — recommend opening overflow concourse and pausing concession queue entry.', time:'2 min ago'},
+  {tag:'warn', text:'Gate D wait time up 40% in 10 min. Suggest redirecting arriving fans via signage + AI wayfinding push to Gate E.', time:'6 min ago'},
+  {tag:'info', text:'Shuttle Line 3 running 3 min behind schedule due to drop-off congestion at Plaza Norte.', time:'11 min ago'},
+  {tag:'info', text:'214 multilingual fan queries resolved by Estadio Copilot in the last 10 minutes, 0 escalations to staff.', time:'12 min ago'},
+];
+function renderAlerts(list){
+  document.getElementById('alertFeed').innerHTML = list.map(a=>
+    `<div class="alert"><span class="tag ${a.tag}">${a.tag}</span><div><p>${a.text}</p><span class="time">${a.time}</span></div></div>`
+  ).join('');
+}
+renderAlerts(seedAlerts);
+
+/* ---------------- Claude API helper ---------------- */
+async function askClaude(systemPrompt, userText){
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userText }]
+    })
+  });
+  const data = await response.json();
+  const text = (data.content || []).map(b => b.text || "").join("\n").trim();
+  return text || "I couldn't generate a response just now — please try again.";
+}
+
+/* ---------------- Fan chat ---------------- */
+const chatLog = document.getElementById('chatLog');
+const chatInput = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
+const langSel = document.getElementById('lang');
+
+const stadiumContext = `You are Estadio Copilot, an on-site GenAI concierge inside "Estadio Grande", a 68,000-seat FIFA World Cup 2026 host stadium. You have full knowledge of this simulated venue:
+- Gates: A (North, low traffic), B (East, moderate wait), C (Accessible entrance, step-free, elevators, companion seating, sign-language kiosk nearby), D (South, currently long wait, recommend alternates), E (West, low traffic).
+- Seating sections 100-120 (lower bowl, sections 214-218 currently very crowded — suggest fans in that zone use the West concourse and allow extra time).
+- Accessibility: step-free routes from Gate C to all lower-bowl sections via West concourse elevators; a sensory-friendly quiet room is located behind Section 105, marked with a calm-room icon; companion seating available near Sections 108, 214, 301.
+- Transport: Shuttle Line 3 (stadium to downtown, every 8 min, boarding at Plaza Norte), Metro Line 2 (10 min walk from Gate A, on time), rideshare pickup is discouraged near the stadium due to congestion — walking 400m to the designated rideshare zone is faster and greener.
+- Sustainability: fans are gently encouraged toward shuttle/metro/walking over private cars; mention estimated CO2 savings when relevant, briefly.
+- Restrooms and concessions are located at every gate's concourse level.
+Always reply in the language the user is asking in, or in the language specified in brackets if given. Keep answers concise (2-4 sentences), warm, practical, and specific to this venue. If asked something you have no data for, say so honestly and suggest asking a nearby steward.`;
+
+function addMsg(text, cls){
+  const div = document.createElement('div');
+  div.className = 'msg ' + cls;
+  div.textContent = text;
+  chatLog.appendChild(div);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return div;
+}
+
+async function handleAsk(question){
+  if(!question.trim()) return;
+  addMsg(question, 'user');
+  chatInput.value = '';
+  sendBtn.disabled = true;
+  const loadingEl = addMsg('Estadio Copilot is thinking…', 'bot loading');
+  try{
+    const lang = langSel.value;
+    const answer = await askClaude(stadiumContext, `[Respond in ${lang}] ${question}`);
+    loadingEl.remove();
+    addMsg(answer, 'bot');
+  }catch(e){
+    loadingEl.remove();
+    addMsg('Something went wrong reaching the assistant. Please try again.', 'bot');
+  }
+  sendBtn.disabled = false;
+}
+
+sendBtn.addEventListener('click', ()=> handleAsk(chatInput.value));
+chatInput.addEventListener('keydown', e=>{ if(e.key==='Enter') handleAsk(chatInput.value); });
+document.querySelectorAll('.chip').forEach(chip=>{
+  chip.addEventListener('click', ()=> handleAsk(chip.dataset.q));
+});
+
+/* ---------------- AI Ops Briefing ---------------- */
+const genBtn = document.getElementById('genBtn');
+const briefingBody = document.getElementById('briefingBody');
+
+const opsSnapshot = `Current live stadium data snapshot for Estadio Grande (68,000 capacity), FIFA World Cup 2026:
+- Attendance: 67,412 fans currently in venue.
+- Gate waits: Gate A 6 min, Gate B 14 min, Gate C (accessible) 3 min, Gate D 22 min (rising), Gate E 9 min.
+- Seating density: Sections 214-218 and 108-112 at CRITICAL density; sections 100-107 LOW; general bowl MODERATE.
+- Transport: Shuttle Line 3 running 3 min behind schedule due to drop-off congestion at Plaza Norte; Metro Line 2 on time; rideshare pickup zone at 60% capacity.
+- Weather: 29°C, high UV, hydration stations open and moderately busy.
+- Fan assistant: 214 multilingual queries resolved in last 10 minutes with zero staff escalations.
+- Sustainability: 318 shuttle riders in last 10 minutes; estimated 6.2 tonnes CO2 saved today vs private car baseline.
+You are the AI operations copilot for the command center. Write a short, plain-language briefing (4-6 sentences) a Chief of Operations could read aloud to the team: what's happening now, the single biggest risk, and 2-3 concrete recommended actions ranked by urgency. Be direct and specific, no fluff, no headers, just prose.`;
+
+genBtn.addEventListener('click', async ()=>{
+  genBtn.disabled = true;
+  genBtn.textContent = 'Generating…';
+  briefingBody.classList.add('placeholder');
+  briefingBody.textContent = 'Reading live gate, density, and transport data…';
+  try{
+    const briefing = await askClaude('You are a precise, calm stadium operations AI copilot.', opsSnapshot);
+    briefingBody.classList.remove('placeholder');
+    briefingBody.textContent = briefing;
+  }catch(e){
+    briefingBody.textContent = 'Could not generate a briefing right now — please try again.';
+  }
+  genBtn.disabled = false;
+  genBtn.textContent = 'Generate live briefing';
+});
+</script>
+</body>
+</html>
