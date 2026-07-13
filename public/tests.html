@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>StadiumPulse — Test Suite</title>
+<style>
+  body{font-family:'JetBrains Mono',monospace;background:#0A0E1A;color:#EDEFF3;padding:32px;max-width:800px;margin:0 auto;}
+  h1{font-size:18px;}
+  .pass{color:#2FBE7C;}
+  .fail{color:#E5533D;}
+  .summary{margin-top:20px;padding:14px;border:1px solid rgba(255,255,255,.15);border-radius:8px;font-weight:bold;}
+  li{margin:4px 0;font-size:13px;}
+</style>
+</head>
+<body>
+<h1>StadiumPulse — utils.js test suite (no build step required)</h1>
+<ul id="results"></ul>
+<div class="summary" id="summary"></div>
+
+<script src="js/utils.js"></script>
+<script>
+'use strict';
+const U = window.StadiumPulseUtils;
+const results = [];
+
+function assertEqual(actual, expected, label){
+  const pass = JSON.stringify(actual) === JSON.stringify(expected);
+  results.push({ pass, label, actual, expected });
+}
+
+// sanitizeInput
+assertEqual(U.sanitizeInput('<script>bad</script>'), 'scriptbad/script', 'sanitizeInput strips angle brackets');
+assertEqual(U.sanitizeInput('  a   b  '), 'a b', 'sanitizeInput collapses whitespace');
+assertEqual(U.sanitizeInput('a'.repeat(600)).length, 500, 'sanitizeInput enforces max length');
+assertEqual(U.sanitizeInput(null), '', 'sanitizeInput handles non-string input');
+
+// escapeHtml
+assertEqual(U.escapeHtml('<b>&"\''), '&lt;b&gt;&amp;&quot;&#39;', 'escapeHtml escapes special characters');
+
+// waitLevel
+assertEqual(U.waitLevel(5), 'low', 'waitLevel: 5 min is low');
+assertEqual(U.waitLevel(12), 'med', 'waitLevel: 12 min is med');
+assertEqual(U.waitLevel(25), 'high', 'waitLevel: 25 min is high');
+assertEqual(U.waitLevel(NaN), 'low', 'waitLevel: NaN defaults to low');
+
+// densityStats
+assertEqual(U.densityStats(['low','med','crit','crit']), {low:1,med:1,high:0,crit:2,total:4}, 'densityStats counts levels');
+assertEqual(U.densityStats([]), {low:0,med:0,high:0,crit:0,total:0}, 'densityStats handles empty array');
+
+// cacheKey
+assertEqual(U.cacheKey('Hello', 'English') === U.cacheKey('hello', 'english'), true, 'cacheKey is case-insensitive');
+
+// createTTLCache
+const cache = U.createTTLCache(1000);
+cache.set('x', 42);
+assertEqual(cache.get('x'), 42, 'TTL cache stores and retrieves a value');
+assertEqual(cache.get('missing'), undefined, 'TTL cache returns undefined for missing key');
+
+// debounce (async-friendly check)
+let debounceCount = 0;
+const debounced = U.debounce(() => debounceCount++, 20);
+debounced(); debounced(); debounced();
+setTimeout(() => {
+  assertEqual(debounceCount, 1, 'debounce collapses rapid calls into one');
+  render();
+}, 60);
+
+function render(){
+  const list = document.getElementById('results');
+  list.innerHTML = '';
+  let passCount = 0;
+  results.forEach(r => {
+    const li = document.createElement('li');
+    li.className = r.pass ? 'pass' : 'fail';
+    li.textContent = (r.pass ? '✓ PASS — ' : '✗ FAIL — ') + r.label +
+      (r.pass ? '' : ` (expected ${JSON.stringify(r.expected)}, got ${JSON.stringify(r.actual)})`);
+    list.appendChild(li);
+    if (r.pass) passCount++;
+  });
+  const summary = document.getElementById('summary');
+  summary.className = 'summary ' + (passCount === results.length ? 'pass' : 'fail');
+  summary.textContent = `${passCount} / ${results.length} tests passed`;
+}
+// Initial render for the synchronous assertions; the debounce test re-renders after its timeout.
+render();
+</script>
+</body>
+</html>

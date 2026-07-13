@@ -1,0 +1,11 @@
+{
+  "name": "stadiumpulse",
+  "version": "2.0.0",
+  "description": "GenAI Command Center for Smart Stadiums & Tournament Operations — FIFA World Cup 2026",
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
